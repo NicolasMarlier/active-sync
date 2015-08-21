@@ -83,12 +83,17 @@ module ActiveSync
 		# Returns an encoding name based on the byte code
 		# Reference: http://www.iana.org/assignments/character-sets/character-sets.xml
 		def self.compute_encoding encoding_byte
-			charsets = YAML.load_file "lib/active_sync/charsets.yml"
+
+			charsets = YAML.load_file(File.join(__dir__, "charsets.yml"))
 			charsets[encoding_byte]
 		end
 
 		def self.compute_string_table string_table_raw_data
 			string_table_raw_data
+		end
+
+		def self.bytes_array_to_opaque_length bytes_array
+			(bytes_array[0] % 128) * 128 + bytes_array[1]
 		end
 
 		# Computes the tag table
@@ -104,8 +109,25 @@ module ActiveSync
 				bit7 = byte >= 64
 
 				id = byte % 64
-				code_tag_name = get_code_tag_name(id, current_code_page_name)
+
+				# Try the code tag name without removing 7th and 8th bits
 				str = ""
+				code_tag_name = get_code_tag_name(byte, current_code_page_name)
+				if code_tag_name && code_tag_name == "OPAQUE"
+					opaque_data_length = bytes_array_to_opaque_length(tag_table_raw_data[i+1..i+2])
+					str = tag_table_raw_data[i+3..i+2+opaque_data_length].map(&:chr).join.force_encoding(encoding)
+					p "Opaque!"
+					p tag_table_raw_data[i+1..i+2]
+					p opaque_data_length
+					p "*"
+					p str
+					p "*"
+					i = i + 2 + opaque_data_length
+				else
+					code_tag_name = get_code_tag_name(id, current_code_page_name)
+				end
+
+				
 				if code_tag_name == "STR_I"
 					i += 1
 					while tag_table_raw_data[i] != 0 && i < tag_table_raw_data.length do
@@ -138,7 +160,7 @@ module ActiveSync
 
 		def self.get_code_tag_name code_tag_byte, code_page_name
 			t = Time.now
-			@code_tags ||= YAML.load_file("lib/active_sync/code_tags.yml")
+			@code_tags ||= YAML.load_file(File.join(__dir__, "code_tags.yml"))
 			code_page_name ||= "AirSync"
 
 			
@@ -153,7 +175,7 @@ module ActiveSync
 		end
 
 		def self.get_code_page_name code_page_byte
-			@code_pages ||= YAML.load_file("lib/active_sync/code_pages.yml")
+			@code_pages ||= YAML.load_file(File.join(__dir__, "code_pages.yml"))
 			@code_pages[code_page_byte]
 		end
 
@@ -175,6 +197,12 @@ module ActiveSync
 
 			label = "#{code_page_name_prefix}#{code_tag_name}"
 			if code_tag_name == "STR_I"
+				data.shift
+				return data_byte[:str]
+			end
+
+			if code_tag_name == "OPAQUE"
+				p "Fould opaque"
 				data.shift
 				return data_byte[:str]
 			end
@@ -297,6 +325,10 @@ END
 				daylight_date: bytes_array_to_time(daylight_date_bytes),
 				daylight_bias: bytes_array_to_uint32(daylight_bias_bytes)
 			}
+		end
+
+		def self.real_bytes_array_to_uint32 bytes_array
+			bytes_array.reverse.map(&:chr).join.unpack("l").first
 		end
 
 		def self.bytes_array_to_uint32 bytes_array
