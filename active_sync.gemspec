@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.name = "active-sync"
   s.summary = "A Ruby interface to Active sync."
   s.description = "A Ruby interface to Active sync"
-  s.version = "0.1.0"
+  s.version = "0.1.0.1"
   s.platform = Gem::Platform::RUBY
   s.authors = ["Nicolas Marlier"]
   s.homepage = "http://github.com/nmarlier/active-sync"
