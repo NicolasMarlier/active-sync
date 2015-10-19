@@ -24,8 +24,7 @@ module ActiveSync
 			bytes += generate_string_table
 			bytes += generate_tag_table hash
 
-			#bytes.map{|b| b.chr}.join
-      bytes.pack('C*').force_encoding('utf-8')
+			bytes.map{|b| b.chr}.join
 		end
 
 		def self.generate_string string
