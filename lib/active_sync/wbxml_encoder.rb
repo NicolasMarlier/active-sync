@@ -48,12 +48,25 @@ module ActiveSync
 				string_bytes << i.to_i
 			end
 			string_bytes_length = string_bytes.length
-			
-			bytes += [128 + string_bytes_length/128, string_bytes_length%128]
+
+			#bytes += [128 + string_bytes_length/128, string_bytes_length%128]
+      bytes += self.length_to_bytes string_bytes_length
 			bytes += string_bytes
 
 			bytes
-		end
+    end
+
+    # - - - - - - - - - - - - - - - - - - - - -
+    # Very strange way to encode integers
+    # http://www.w3.org/TR/wbxml/#_Toc443384895
+    # - - - - - - - - - - - - - - - - - - - - -
+    def self.length_to_bytes length, continuation=false
+      if length > 0
+        self.length_to_bytes(length / 128, true) + [length % 128 + ((continuation)?128:0)]
+      else
+        []
+      end
+    end
 
 		def self.get_code_tag_byte code_names
 			code_names_array = code_names.split(":")
